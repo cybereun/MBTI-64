@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>64-MBTI // 세분화 성격 진단 & AI 분석기</title>
+  
+  <!-- Poor Story Font (from spiralday) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poor+Story&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            poorStory: ['"Poor Story"', 'cursive', 'sans-serif']
+          },
+          colors: {
+            brutalYellow: '#FFE600',
+            brutalBlue: '#2563EB',
+            brutalRed: '#FF4D4D',
+            brutalGreen: '#00D084',
+            brutalBg: '#F8F5EE'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & ReactDOM & Babel for in-browser JSX -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Canvas Confetti & HTML-to-Image -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.4/dist/confetti.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    @font-face {
+      font-family: 'Poor Story';
+      src: url('./public/fonts/PoorStory-Regular.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    body {
+      background-color: #F8F5EE;
+      color: #111111;
+      font-family: 'Poor Story', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, cursive, sans-serif;
+      font-size: 1.05rem;
+      letter-spacing: 0.01em;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .brutal-card {
+      border: 3px solid #000000;
+      box-shadow: 4px 4px 0px #000000;
+      background-color: #ffffff;
+    }
+
+    .brutal-card-lg {
+      border: 4px solid #000000;
+      box-shadow: 7px 7px 0px #000000;
+      background-color: #ffffff;
+    }
+
+    .brutal-btn {
+      border: 2px solid #000000;
+      box-shadow: 3px 3px 0px #000000;
+      font-weight: 700;
+      transition: all 0.1s ease-in-out;
+    }
+
+    .brutal-btn:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 4px 4px 0px #000000;
+    }
+
+    .brutal-btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 0px 0px 0px #000000;
+    }
+
+    .brutal-tag {
+      border: 2px solid #000000;
+      box-shadow: 2px 2px 0px #000000;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .window-dots {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .window-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 9999px;
+      border: 2px solid #000000;
+    }
+  </style>
+</head>
+<body class="bg-[#F8F5EE]">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // 1. DATA: 64 Types Generator
+    const mbtiData = {
+      INTJ: { baseName: "전략가 (Mastermind)", core: "통찰력과 독립적 사고를 지닌 비전 설계자", domain: "전략적 분석 및 시스템 구축" },
+      INTP: { baseName: "논리학자 (Logician)", core: "끝없는 지적 호기심과 정밀한 분석의 탐구자", domain: "원리 규명 및 이론 모델링" },
+      ENTJ: { baseName: "통솔자 (Commander)", core: "대담한 비전과 거침없는 실행의 총사령관", domain: "조직 통솔 및 대규모 목표 달성" },
+      ENTP: { baseName: "변론가 (Debater)", core: "기민한 두뇌와 재치로 통념에 도전하는 혁신가", domain: "새로운 패러다임 개척 및 브레인스토밍" },
+      INFJ: { baseName: "옹호자 (Advocate)", core: "깊은 통찰력과 확고한 가치관을 지닌 선구자", domain: "인간 본질 이해 및 영감 부여" },
+      INFP: { baseName: "중재자 (Mediator)", core: "진정성과 이상을 추구하는 사려 깊은 치유자", domain: "감성적 가치 창출 및 개인의 잠재력 지지" },
+      ENFJ: { baseName: "선도자 (Protagonist)", core: "사람들의 마음을 움직이고 잠재력을 꽃피우는 조력자", domain: "공동체 결속 및 동기 부여 리더십" },
+      ENFP: { baseName: "활동가 (Campaigner)", core: "자유로운 영혼과 넘치는 열정의 에너지 발전기", domain: "새로운 관계 촉진 및 창의적 영감 전파" },
+      ISTJ: { baseName: "현실주의자 (Logistician)", core: "원칙과 사실을 수호하는 신뢰의 기둥", domain: "체계적 관리 및 프로세스 완결" },
+      ISFJ: { baseName: "수호자 (Defender)", core: "헌신과 온기로 묵묵히 곁을 지키는 든든한 보호자", domain: "세심한 실무 지원 및 관계 안정화" },
+      ESTJ: { baseName: "경영자 (Executive)", core: "탁월한 질서와 현실적 규율로 성과를 이끄는 관리자", domain: "자원 조직화 및 결과 지향 프로젝트 지휘" },
+      ESFJ: { baseName: "집정관 (Consul)", core: "따뜻한 배려와 친화력으로 사람들을 잇는 허브", domain: "팀 분위기 조율 및 네트워크 활성화" },
+      ISTP: { baseName: "장인 (Virtuoso)", core: "냉철한 관찰과 손끝의 기술로 문제를 해결하는 만능 해결사", domain: "즉각적인 기술적 문제해결 및 메커니즘 조작" },
+      ISFP: { baseName: "모험가 (Adventurer)", core: "순간의 아름다움과 개성을 오롯이 표현하는 예술가", domain: "심미적 조형 및 감각적 경험 설계" },
+      ESTP: { baseName: "사업가 (Entrepreneur)", core: "위험을 두려워하지 않고 현장에서 즉각 승부를 보는 행동파", domain: "위기 돌파 및 기회 포착 액션" },
+      ESFP: { baseName: "연예인 (Entertainer)", core: "생동감 넘치는 매력으로 주변을 축제로 만드는 분위기 메이커", domain: "현장 에너지 극대화 및 공감대 형성" }
+    };
+
+    const dcnhData = {
+      D: { name: "주도형 (Dominant)", role: "결단과 지휘, 목표 돌파", color: "#FF4D4D", workStyle: "빠른 의사결정과 공격적인 목표 달성을 추구합니다.", subTrait: "방향이 흐려질 때 주저 없이 지휘권을 쥐고 장애물을 뚫고 나아갑니다." },
+      C: { name: "창의형 (Creative)", role: "새로운 가능성 발굴과 즉흥적 실험", color: "#FFE600", workStyle: "정형화된 틀을 깨고 예상치 못한 창의적 접근법을 모색합니다.", subTrait: "호기심을 자극하는 새로운 프로젝트에서 가장 빛을 발하며 기발한 아이디어를 쏟아냅니다." },
+      N: { name: "체계형 (Normalizing)", role: "규칙 수립, 품질 완결, 프로세스 표준화", color: "#2563EB", workStyle: "세부적인 디테일과 일관성 있는 절차를 통해 완성도를 극대화합니다.", subTrait: "감정 기복 없이 철저한 점검과 시스템화를 통해 오류 없는 결과를 만듭니다." },
+      H: { name: "조화형 (Harmonizing)", role: "갈등 중재, 심리적 안정, 유연한 협업", color: "#00D084", workStyle: "구성원들의 마음을 보듬고 환경에 부드럽게 적응하며 평화를 유지합니다.", subTrait: "대립하는 의견들 사이에서 균형점을 찾아내고 구성원 모두가 편안한 환경을 조성합니다." }
+    };
+
+    const typeCatalog = {};
+    Object.entries(mbtiData).forEach(([mbti, mInfo]) => {
+      ['D', 'C', 'N', 'H'].forEach(sub => {
+        const dInfo = dcnhData[sub];
+        const code = `${mbti}-${sub}`;
+        let title = "", slogan = "", strengths = [], risks = [], synergy = "";
+
+        if (sub === 'D') {
+          title = `행동력으로 비전을 관철하는 ${mInfo.baseName}`;
+          slogan = `“생각을 머뭇거리지 않고 즉각적인 행동과 결과로 증명한다.”`;
+          strengths = ["신속한 위기 돌파력과 목표 추진력", "명확한 우선순위 설정 및 결단력", "주변을 강하게 이끄는 주도적 에너지"];
+          risks = ["속도를 중시하다 팀원의 피로도나 정서적 반응을 간과할 위험", "타인의 신중한 의견을 답답하게 여길 수 있음"];
+          synergy = "체계형(N)의 꼼꼼한 백업과 조화형(H)의 완충 지원이 있을 때 최상의 시너지를 냅니다.";
+        } else if (sub === 'C') {
+          title = `기존 틀을 깨는 실험적 ${mInfo.baseName}`;
+          slogan = `“정답은 하나가 아니다. 세상에 없던 새로운 길을 만든다.”`;
+          strengths = ["파격적인 발상 전환과 독창적 아이디어 창출", "위기 상황에서의 임기응변과 유연한 적응력", "호기심과 지적 자극을 통한 주변 영감 고취"];
+          risks = ["새로운 시작은 빠르나 지루한 반복 뒷정리에 소홀해질 수 있음", "기존 규범이나 정해진 절차를 건너뛰려는 경향"];
+          synergy = "주도형(D)이 실행을 결단해주고 체계형(N)이 뒷수습 및 표준화를 맡아줄 때 혁신이 완성됩니다.";
+        } else if (sub === 'N') {
+          title = `원칙과 무결성을 수호하는 정밀 ${mInfo.baseName}`;
+          slogan = `“완벽한 디테일과 견고한 시스템이 최고의 결과를 보장한다.”`;
+          strengths = ["탁월한 품질 관리와 오차 없는 세부 분석력", "한결같은 신뢰성과 높은 약속 이행률", "복잡한 구조를 일목요연하게 정리하는 표준화 능력"];
+          risks = ["지나친 완벽주의로 인해 의사결정이 지연될 수 있음", "예상치 못한 급격한 변화나 모호한 상황에 스트레스"];
+          synergy = "창의형(C)의 번뜩이는 아이디어를 현실적 제도로 안착시키고, 주도형(D)의 속도를 안정적으로 통제합니다.";
+        } else if (sub === 'H') {
+          title = `사람과 균형을 연결하는 현자형 ${mInfo.baseName}`;
+          slogan = `“모두가 화합하고 안정을 찾을 때 진정한 시너지가 일어난다.”`;
+          strengths = ["탁월한 공감 능력과 심리적 완충 지대 역할", "어떤 환경에도 부드럽게 스며드는 유연한 적응력", "숨겨진 갈등을 조용히 치유하는 따뜻한 서포트"];
+          risks = ["자신의 솔직한 욕구나 주장을 억누르다 속앓이를 할 수 있음", "갈등을 피하려다 단호한 결단을 내려야 할 시기를 놓칠 위험"];
+          synergy = "추진력이 강한 주도형(D)의 마찰을 줄여주고, 정밀한 체계형(N)에게 유연한 쉼표를 제공합니다.";
+        }
+
+        typeCatalog[code] = {
+          code, mbti, dcnh: sub, dcnhTitle: dInfo.name, baseName: mInfo.baseName,
+          title, slogan, color: dInfo.color,
+          badge: `${mInfo.baseName.split(' ')[0]} × ${dInfo.name.split(' ')[0]}`,
+          summary: `${mInfo.core}인 ${mbti}의 본질 위에, ${dInfo.subTrait}`,
+          domain: mInfo.domain, workStyle: dInfo.workStyle, strengths, risks, synergy,
+          advice: `[${code} 성장 가이드] ${dInfo.name}의 성향이 당신의 ${mbti} 역량을 독보적으로 만듭니다. ${risks[0]}에 유의하면 더 탁월한 성과를 창출합니다.`
+        };
+      });
+    });
+
+    // 2. DATA: Questions
+    const quickQuestions = [
+      { id: "q1", dimension: "EI", positive: "E", text: "주말이나 여가 시간에 사람들과 어울려 활동할 때 에너지를 얻는 편이다.", category: "에너지 방향 (E/I)" },
+      { id: "q2", dimension: "EI", positive: "I", text: "복잡한 모임보다는 혼자 조용히 생각하거나 취미에 몰입할 때 피로가 풀린다.", category: "에너지 방향 (E/I)" },
+      { id: "q3", dimension: "SN", positive: "S", text: "추상적인 미래 가능성보다 지금 눈앞의 실제 사실과 검증된 데이터에 집중한다.", category: "인식 방식 (S/N)" },
+      { id: "q4", dimension: "SN", positive: "N", text: "현실적인 세부사항보다 숨겨진 의미, 새로운 영감과 큰 그림을 상상하는 것을 즐긴다.", category: "인식 방식 (S/N)" },
+      { id: "q5", dimension: "TF", positive: "T", text: "중요한 결정을 내릴 때 감정적인 배려보다 논리적 타당성과 효율성을 우선시한다.", category: "판단 기준 (T/F)" },
+      { id: "q6", dimension: "TF", positive: "F", text: "논리적 정답보다 관련된 사람들의 감정과 관계의 조화를 더 깊이 살핀다.", category: "판단 기준 (T/F)" },
+      { id: "q7", dimension: "JP", positive: "J", text: "일정을 미리 정해두고 체계적으로 하나씩 완수해 나가는 것이 마음 편하다.", category: "생활 양식 (J/P)" },
+      { id: "q8", dimension: "JP", positive: "P", text: "상황에 따라 즉흥적으로 대처하고 가능성을 열어두는 유연한 방식을 선호한다.", category: "생활 양식 (J/P)" },
+      { id: "q9", dimension: "DCNH", subType: "D", text: "팀이나 프로젝트에서 방향이 모호할 때 망설임 없이 주도권을 쥐고 결단을 내린다.", category: "하위유형 (DCNH)" },
+      { id: "q10", dimension: "DCNH", subType: "D", text: "장애물이 생겨도 물러서지 않고 목표를 돌파해 결과를 만들어내는 편이다.", category: "하위유형 (DCNH)" },
+      { id: "q11", dimension: "DCNH", subType: "C", text: "기존의 정해진 방식에 얽매이기보다 파격적이고 기발한 새 아이디어를 시도한다.", category: "하위유형 (DCNH)" },
+      { id: "q12", dimension: "DCNH", subType: "C", text: "호기심을 끄는 흥미진진한 자극이 생기면 즉각적으로 실험해보고 싶다.", category: "하위유형 (DCNH)" },
+      { id: "q13", dimension: "DCNH", subType: "N", text: "규칙, 표준화된 프로세스, 디테일한 정리정돈을 유지하는 것이 업무의 기본이라 여긴다.", category: "하위유형 (DCNH)" },
+      { id: "q14", dimension: "DCNH", subType: "N", text: "변덕스러운 행동을 지양하고 언제나 신중하며 예측 가능한 일관성을 보여준다.", category: "하위유형 (DCNH)" },
+      { id: "q15", dimension: "DCNH", subType: "H", text: "주변 사람들의 심리적 분위기나 갈등을 민감하게 포착해 중재하고 편안하게 만든다.", category: "하위유형 (DCNH)" },
+      { id: "q16", dimension: "DCNH", subType: "H", text: "내 주장을 강요하기보다는 환경에 부드럽게 적응하며 모두의 평화를 지키는 편이다.", category: "하위유형 (DCNH)" }
+    ];
+
+    // Scoring Engine
+    function calculateScores(responses, questions) {
+      const stats = {
+        E: { score: 0, count: 0 }, I: { score: 0, count: 0 },
+        S: { score: 0, count: 0 }, N: { score: 0, count: 0 },
+        T: { score: 0, count: 0 }, F: { score: 0, count: 0 },
+        J: { score: 0, count: 0 }, P: { score: 0, count: 0 },
+        D: { score: 0, count: 0 }, C: { score: 0, count: 0 },
+        Norm: { score: 0, count: 0 }, H: { score: 0, count: 0 }
+      };
+
+      questions.forEach((q) => {
+        const val = responses[q.id];
+        if (val === undefined || val === null) return;
+
+        if (q.dimension === 'EI') {
+          if (q.positive === 'E') {
+            stats.E.score += val; stats.E.count += 1;
+            stats.I.score += (6 - val); stats.I.count += 1;
+          } else {
+            stats.I.score += val; stats.I.count += 1;
+            stats.E.score += (6 - val); stats.E.count += 1;
+          }
+        } else if (q.dimension === 'SN') {
+          if (q.positive === 'S') {
+            stats.S.score += val; stats.S.count += 1;
+            stats.N.score += (6 - val); stats.N.count += 1;
+          } else {
+            stats.N.score += val; stats.N.count += 1;
+            stats.S.score += (6 - val); stats.S.count += 1;
+          }
+        } else if (q.dimension === 'TF') {
+          if (q.positive === 'T') {
+            stats.T.score += val; stats.T.count += 1;
+            stats.F.score += (6 - val); stats.F.count += 1;
+          } else {
+            stats.F.score += val; stats.F.count += 1;
+            stats.T.score += (6 - val); stats.T.count += 1;
+          }
+        } else if (q.dimension === 'JP') {
+          if (q.positive === 'J') {
+            stats.J.score += val; stats.J.count += 1;
+            stats.P.score += (6 - val); stats.P.count += 1;
+          } else {
+            stats.P.score += val; stats.P.count += 1;
+            stats.J.score += (6 - val); stats.J.count += 1;
+          }
+        } else if (q.dimension === 'DCNH') {
+          const sub = q.subType === 'N' ? 'Norm' : q.subType;
+          if (stats[sub]) {
+            stats[sub].score += val;
+            stats[sub].count += 1;
+          }
+        }
+      });
+
+      const calcPairPercent = (posKey, negKey) => {
+        const posScore = stats[posKey].score;
+        const negScore = stats[negKey].score;
+        const total = posScore + negScore;
+        if (total === 0) return { posPercent: 50, negPercent: 50 };
+        const posPercent = Math.round((posScore / total) * 100);
+        return { posPercent, negPercent: 100 - posPercent };
+      };
+
+      const ei = calcPairPercent('E', 'I');
+      const sn = calcPairPercent('S', 'N');
+      const tf = calcPairPercent('T', 'F');
+      const jp = calcPairPercent('J', 'P');
+
+      const mbti = [
+        ei.posPercent >= 50 ? 'E' : 'I',
+        sn.posPercent >= 50 ? 'S' : 'N',
+        tf.posPercent >= 50 ? 'T' : 'F',
+        jp.posPercent >= 50 ? 'J' : 'P'
+      ].join('');
+
+      const calcDcnhAvg = (key) => {
+        const item = stats[key];
+        if (!item.count) return 50;
+        return Math.round(((item.score / item.count - 1) / 4) * 100);
+      };
+
+      const dcnhScores = {
+        D: calcDcnhAvg('D'),
+        C: calcDcnhAvg('C'),
+        N: calcDcnhAvg('Norm'),
+        H: calcDcnhAvg('H')
+      };
+
+      const sortedDcnh = Object.entries(dcnhScores).sort((a, b) => b[1] - a[1]);
+      const topSubType = sortedDcnh[0][0];
+
+      const warnings = [];
+      if (Math.abs(ei.posPercent - 50) <= 6) warnings.push('외향(E)과 내향(I)의 성향이 균형을 이루고 있습니다.');
+      if (Math.abs(sn.posPercent - 50) <= 6) warnings.push('감각(S)과 직관(N)의 균형 상태로, 현실과 이상을 넘나듭니다.');
+      if (Math.abs(tf.posPercent - 50) <= 6) warnings.push('사고(T)와 감정(F)의 균형 상태로, 이성과 공감의 조화를 중시합니다.');
+      if (Math.abs(jp.posPercent - 50) <= 6) warnings.push('판단(J)과 인식(P)의 유연한 균형으로 계획과 즉흥성을 겸비했습니다.');
+      if (sortedDcnh[0][1] - sortedDcnh[1][1] <= 5) {
+        warnings.push(`주 하위유형(${sortedDcnh[0][0]})과 차순위(${sortedDcnh[1][0]})의 격차가 미세하여 복합적인 특성을 보입니다.`);
+      }
+
+      return {
+        code: `${mbti}-${topSubType}`,
+        mbti,
+        subType: topSubType,
+        secondarySubType: sortedDcnh[1][0],
+        dimensions: {
+          EI: { E: ei.posPercent, I: ei.negPercent },
+          SN: { S: sn.posPercent, N: sn.negPercent },
+          TF: { T: tf.posPercent, F: tf.negPercent },
+          JP: { J: jp.posPercent, P: jp.negPercent }
+        },
+        dcnhScores,
+        sortedDcnh,
+        warnings,
+        answeredCount: Object.keys(responses).length,
+        totalQuestions: questions.length
+      };
+    }
+
+    // AI Advisor Engine
+    async function generatePersonalizedAdvice({ question, result, typeInfo, apiKey }) {
+      if (!question || !question.trim()) return { success: false, message: "질문을 입력하세요." };
+
+      if (apiKey && apiKey.trim()) {
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{
+                  text: `당신은 64가지 MBTI×DCNH 세분화 성격 유형 전문 심리 분석가입니다.
+사용자 유형: ${result.code} (${typeInfo.title})
+사용자 질문/상황: "${question}"
+다음 형식으로 브루탈리즘 감성의 명쾌한 한국어 솔루션을 작성하세요:
+1. 🧠 [성향 분석] 2. ⚡ [핵심 강점 활용법] 3. 🎯 [3단계 실천 행동 플랜] 4. ⚠️ [주의할 맹점]`
+                }]
+              }]
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) return { success: true, source: 'gemini', content: text };
+          }
+        } catch (e) {
+          console.warn("Gemini 호출 실패, 로컬 엔진 전환", e);
+        }
+      }
+
+      // Local Rule Engine
+      const dcnhTrait = {
+        D: {
+          action: "상황을 장악하고 명확한 결단을 내려 빠른 결과를 도출하는 '주도적 돌파'",
+          trap: "결과에 너무 집중한 나머지 타인의 감정이나 숨은 의도를 성급하게 재단할 수 있습니다.",
+          steps: [
+            "지금 상황에서 내가 직접 통제할 수 있는 핵심 변수 1가지를 우선 식별하세요.",
+            "주변 이해관계자에게 결론부터 명확하고 단호하게 소통하여 방향성을 제시하세요.",
+            "목표 달성 기한을 단기 단위로 쪼개어 가시적인 성과를 빠르게 확인하세요."
+          ]
+        },
+        C: {
+          action: "기존 관행을 벗어나 완전히 새로운 시각으로 대안을 발굴하는 '창의적 우회'",
+          trap: "아이디어만 풍성하고 실행과 마무리 정리가 지연되어 동력을 잃을 수 있습니다.",
+          steps: [
+            "‘당연하다’고 생각했던 전제들을 의심해보고, 전혀 다른 분야의 해결책을 접목해보세요.",
+            "가장 흥미로운 아이디어를 프로토타입이나 가벼운 테스트 형태로 당장 시도해보세요.",
+            "아이디어가 분산되지 않도록 핵심 아이디어 1가지를 정해 마감 기한을 고정하세요."
+          ]
+        },
+        N: {
+          action: "원칙과 데이터를 꼼꼼히 검증하여 안전하고 지속 가능한 체계를 세우는 '정밀 해결'",
+          trap: "지나친 완벽주의로 인해 리스크 분석에 갇혀 실행 타이밍을 놓칠 수 있습니다.",
+          steps: [
+            "관련된 사실과 데이터를 시간 순서나 항목별로 정리하여 가시화하세요.",
+            "타인과의 규칙 및 역할 분담을 문서화하여 오해의 소지를 원천 차단하세요.",
+            "‘80%의 완성도’에서 일단 1차 실행을 진행하고 점진적으로 보완하세요."
+          ]
+        },
+        H: {
+          action: "상대방의 마음을 살피고 부드러운 분위기 속에서 접점을 찾는 '공감과 조율'",
+          trap: "타인을 배려하느라 자신의 진짜 욕구나 손해를 감수하고 속앓이를 할 수 있습니다.",
+          steps: [
+            "갈등 당사자들의 속마음과 감정적 니즈를 1:1 티타임 등을 통해 경청하세요.",
+            "내 의견을 말할 때 ‘나 전달법(I-Message)’을 활용해 부드럽지만 솔직하게 전달하세요.",
+            "모두의 합의점을 찾기 전, 내가 양보할 수 없는 최소한의 기준선을 먼저 명확히 하세요."
+          ]
+        }
+      }[result.subType];
+
+      const content = `### 🧠 [성향 관점의 상황 분석]
+당신은 **${result.code} (${typeInfo.title})** 유형으로, **${typeInfo.baseName}**의 깊은 통찰력과 **${typeInfo.dcnhTitle}**의 성향이 결합되어 있습니다.
+입력해주신 고민("${question}")에 대해, 당신의 성향상 ${result.subType === 'D' ? '빠른 통제권과 결단이 서지 않을 때 가장 큰 피로' : result.subType === 'C' ? '틀에 박힌 해결책만 강요받을 때 답답함' : result.subType === 'N' ? '원칙이 무너지고 불확실성이 커질 때 극심한 스트레스' : '인간관계의 마찰과 냉랭한 분위기에 대한 부담'}을 느끼기 쉽습니다.
+
+---
+
+### ⚡ [핵심 강점 활용법]
+당신이 가진 최고의 무기는 **${dcnhTrait.action}**입니다.
+${result.mbti} 특유의 고유 역량(${typeInfo.domain})과 결합될 때 이 문제는 단순한 위기가 아닌, 당신의 영향력을 입증할 결정적 기회가 됩니다.
+
+---
+
+### 🎯 [3단계 실천 행동 가이드]
+1. **1단계**: ${dcnhTrait.steps[0]}
+2. **2단계**: ${dcnhTrait.steps[1]}
+3. **3단계**: ${dcnhTrait.steps[2]}
+
+---
+
+### ⚠️ [성향상 주의할 맹점]
+- ${dcnhTrait.trap}
+- 특히 ${typeInfo.risks[0]}에 유의하세요.`;
+
+      return { success: true, source: 'local', content };
+    }
+
+    // MAIN APP COMPONENT
+    function App() {
+      const [activeTab, setActiveTab] = useState('test');
+      const [currentIndex, setCurrentIndex] = useState(0);
+      const [answers, setAnswers] = useState({});
+      const [result, setResult] = useState(null);
+      const [typeInfo, setTypeInfo] = useState(null);
+      const [isAnimating, setIsAnimating] = useState(false);
+
+      // Advisor State
+      const [advisorQuestion, setAdvisorQuestion] = useState('');
+      const [advisorApiKey, setAdvisorApiKey] = useState('');
+      const [showApiKey, setShowApiKey] = useState(false);
+      const [advisorLoading, setAdvisorLoading] = useState(false);
+      const [advisorResult, setAdvisorResult] = useState(null);
+      const [copied, setCopied] = useState(false);
+
+      // Catalog State
+      const [catalogSearch, setCatalogSearch] = useState('');
+      const [catalogDcnh, setCatalogDcnh] = useState('ALL');
+      const [catalogMbti, setCatalogMbti] = useState('ALL');
+      const [catalogModal, setCatalogModal] = useState(null);
+
+      const reportRef = useRef(null);
+      const currentQ = quickQuestions[currentIndex];
+      const progressPercent = Math.round(((currentIndex + 1) / quickQuestions.length) * 100);
+
+      // 키보드 단축키 지원
+      useEffect(() => {
+        const handleKey = (e) => {
+          if (activeTab === 'test') {
+            if (['1', '2', '3', '4', '5'].includes(e.key)) {
+              handleSelectOption(parseInt(e.key, 10));
+            }
+          }
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+      }, [activeTab, currentIndex, answers]);
+
+      const handleSelectOption = (val) => {
+        const newAns = { ...answers, [currentQ.id]: val };
+        setAnswers(newAns);
+        setIsAnimating(true);
+        setTimeout(() => {
+          setIsAnimating(false);
+          if (currentIndex < quickQuestions.length - 1) {
+            setCurrentIndex(currentIndex + 1);
+          } else {
+            completeTest(newAns);
+          }
+        }, 120);
+      };
+
+      const completeTest = (finalAns) => {
+        const res = calculateScores(finalAns, quickQuestions);
+        const info = typeCatalog[res.code] || null;
+        setResult(res);
+        setTypeInfo(info);
+        setActiveTab('result');
+        if (window.confetti) {
+          confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+        }
+      };
+
+      const handleRandomFill = () => {
+        const auto = {};
+        quickQuestions.forEach(q => { auto[q.id] = Math.floor(Math.random() * 5) + 1; });
+        setAnswers(auto);
+        completeTest(auto);
+      };
+
+      const handleDownloadReport = async () => {
+        if (!reportRef.current || !window.htmlToImage) return;
+        try {
+          const dataUrl = await window.htmlToImage.toPng(reportRef.current, { quality: 0.95 });
+          const a = document.createElement('a');
+          a.download = `64-MBTI-${result.code}-Report.png`;
+          a.href = dataUrl;
+          a.click();
+        } catch (e) {
+          alert('이미지 저장 중 오류가 발생했습니다.');
+        }
+      };
+
+      const handleRunAdvisor = async () => {
+        if (!advisorQuestion.trim()) return alert("질문을 입력해주세요.");
+        setAdvisorLoading(true);
+        setAdvisorResult(null);
+        const targetRes = result || {
+          code: 'INTJ-C', mbti: 'INTJ', subType: 'C',
+          dimensions: { EI: { E: 30, I: 70 }, SN: { S: 20, N: 80 }, TF: { T: 85, F: 15 }, JP: { J: 75, P: 25 } },
+          dcnhScores: { D: 60, C: 88, N: 55, H: 45 }
+        };
+        const targetInfo = typeInfo || typeCatalog['INTJ-C'];
+        const res = await generatePersonalizedAdvice({
+          question: advisorQuestion,
+          result: targetRes,
+          typeInfo: targetInfo,
+          apiKey: advisorApiKey
+        });
+        setAdvisorResult(res);
+        setAdvisorLoading(false);
+      };
+
+      const handleResetAdvisor = () => {
+        setAdvisorQuestion('');
+        setAdvisorResult(null);
+      };
+
+      return (
+        <div className="min-h-screen bg-[#F8F5EE] text-black px-3 py-4 md:px-6 md:py-6">
+          <div className="max-w-5xl mx-auto space-y-6">
+
+            {/* HEADER */}
+            <header className="brutal-card bg-[#FFE600] p-3">
+              <div className="flex items-center justify-between border-b-2 border-black pb-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="window-dots">
+                    <span className="window-dot bg-[#FF4D4D]"></span>
+                    <span className="window-dot bg-[#FFE600]"></span>
+                    <span className="window-dot bg-[#00D084]"></span>
+                  </div>
+                  <span className="font-black text-xs md:text-sm tracking-wider uppercase pl-2">
+                    64-MBTI ENGINE // NEO-BRUTALISM EDITION
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono bg-white border border-black px-2 py-0.5 font-bold shadow-[2px_2px_0px_#000]">
+                    MBTI 16 × DCNH 4
+                  </span>
+                  <span className="text-[11px] font-mono bg-[#2563EB] text-white border border-black px-2 py-0.5 font-bold">
+                    STANDALONE v1.0
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="bg-black text-[#FFE600] font-black px-3 py-1 text-base md:text-lg border-2 border-black shadow-[2px_2px_0px_#fff]">
+                    64-MBTI
+                  </div>
+                  <h1 className="font-extrabold text-sm md:text-base hidden sm:block">
+                    64가지 세분화 성격 진단 & AI 분석기
+                  </h1>
+                </div>
+
+                <nav className="flex items-center gap-2">
+                  <button
+                    onClick={() => setActiveTab('test')}
+                    className={`brutal-btn px-3 py-1.5 text-xs md:text-sm cursor-pointer ${activeTab === 'test' ? 'bg-[#2563EB] text-white' : 'bg-white'}`}
+                  >
+                    🧭 진단하기
+                  </button>
+                  {result && (
+                    <button
+                      onClick={() => setActiveTab('result')}
+                      className={`brutal-btn px-3 py-1.5 text-xs md:text-sm cursor-pointer ${activeTab === 'result' ? 'bg-[#FF4D4D] text-white' : 'bg-white'}`}
+                    >
+                      ✨ 진단 결과
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setActiveTab('advisor')}
+                    className={`brutal-btn px-3 py-1.5 text-xs md:text-sm cursor-pointer ${activeTab === 'advisor' ? 'bg-[#00D084] text-black' : 'bg-white'}`}
+                  >
+                    💬 질문/상황 분석
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('catalog')}
+                    className={`brutal-btn px-3 py-1.5 text-xs md:text-sm cursor-pointer ${activeTab === 'catalog' ? 'bg-black text-white' : 'bg-white'}`}
+                  >
+                    📖 64유형 사전
+                  </button>
+                </nav>
+              </div>
+            </header>
+
+            {/* TAB: TEST */}
+            {activeTab === 'test' && (
+              <div className="max-w-4xl mx-auto space-y-6">
+                <div className="flex justify-between items-center brutal-card bg-white p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black bg-black text-white px-2 py-0.5 border border-black">
+                      간편 진단
+                    </span>
+                    <span className="text-xs font-bold text-gray-700">
+                      총 16문항으로 64가지 세분화 성향 판정
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleRandomFill}
+                    className="brutal-btn bg-[#FFFDF5] hover:bg-yellow-200 text-xs px-2.5 py-1 flex items-center gap-1 cursor-pointer"
+                  >
+                    🎲 빠른 시연 응답
+                  </button>
+                </div>
+
+                {/* Progress */}
+                <div className="brutal-card bg-[#2563EB] text-white p-4">
+                  <div className="flex justify-between text-xs font-black mb-1.5">
+                    <span>⚡ QUESTION {String(currentIndex + 1).padStart(2, '0')} / {quickQuestions.length}</span>
+                    <span className="bg-black text-[#FFE600] px-2 py-0.5 border border-white">
+                      진행률: {progressPercent}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-white h-4 border-2 border-black p-0.5">
+                    <div className="bg-[#FFE600] h-full transition-all duration-200" style={{ width: `${progressPercent}%` }}></div>
+                  </div>
+                </div>
+
+                {/* Question Card */}
+                <div className={`brutal-card-lg bg-white p-6 md:p-8 transition-transform ${isAnimating ? 'scale-[0.99]' : 'scale-100'}`}>
+                  <div className="flex justify-between items-center border-b-2 border-black pb-3 mb-6">
+                    <span className="brutal-tag bg-[#FFE600] text-xs px-2.5 py-1">
+                      {currentQ.category}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-gray-500">
+                      단축키 1~5 키 지원 ⌨️
+                    </span>
+                  </div>
+
+                  <div className="min-h-[90px] flex items-center justify-center text-center my-3 px-2">
+                    <h2
+                      className="text-lg sm:text-xl md:text-2xl font-black text-black leading-relaxed break-keep px-2"
+                      style={{ wordBreak: 'keep-all', textWrap: 'balance' }}
+                    >
+                      "{currentQ.text}"
+                    </h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 mt-8">
+                    {[
+                      { val: 1, label: '전혀 아니다', tag: '1' },
+                      { val: 2, label: '약간 아니다', tag: '2' },
+                      { val: 3, label: '보통 / 반반', tag: '3' },
+                      { val: 4, label: '약간 그렇다', tag: '4' },
+                      { val: 5, label: '매우 그렇다', tag: '5' }
+                    ].map(opt => {
+                      const sel = answers[currentQ.id] === opt.val;
+                      return (
+                        <button
+                          key={opt.val}
+                          onClick={() => handleSelectOption(opt.val)}
+                          className={`brutal-btn p-3 flex flex-col items-center justify-center gap-1 cursor-pointer ${sel ? 'bg-[#FFE600] shadow-[4px_4px_0px_#000]' : 'bg-white hover:bg-gray-100'}`}
+                        >
+                          <div className="w-6 h-6 rounded-full border-2 border-black font-black flex items-center justify-center text-xs bg-white">
+                            {opt.tag}
+                          </div>
+                          <span className="text-xs font-black mt-1">{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex justify-between border-t-2 border-black pt-4 mt-8">
+                    <button
+                      onClick={() => currentIndex > 0 && setCurrentIndex(currentIndex - 1)}
+                      disabled={currentIndex === 0}
+                      className={`brutal-btn px-4 py-2 text-xs font-bold ${currentIndex === 0 ? 'opacity-40 cursor-not-allowed bg-gray-200' : 'bg-white cursor-pointer'}`}
+                    >
+                      ← 이전
+                    </button>
+                    {currentIndex < quickQuestions.length - 1 ? (
+                      <button
+                        onClick={() => setCurrentIndex(currentIndex + 1)}
+                        className="brutal-btn bg-white px-4 py-2 text-xs font-bold cursor-pointer"
+                      >
+                        다음 →
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => completeTest(answers)}
+                        className="brutal-btn bg-[#FF4D4D] text-white px-5 py-2 text-xs font-black cursor-pointer shadow-[3px_3px_0px_#000]"
+                      >
+                        결과 확인하기 ✨
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: RESULT */}
+            {activeTab === 'result' && result && (
+              <div className="space-y-6 max-w-5xl mx-auto pb-8">
+                {/* Control bar */}
+                <div className="flex flex-wrap justify-between items-center gap-3 brutal-card bg-white p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="brutal-tag bg-black text-[#FFE600] text-xs px-2.5 py-1">분석 완료</span>
+                    <span className="font-extrabold text-sm">64-MBTI 다차원 대시보드</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={handleDownloadReport} className="brutal-btn bg-[#FFE600] text-black px-3 py-1.5 text-xs font-bold cursor-pointer">
+                      📥 리포트 저장(PNG)
+                    </button>
+                    <button onClick={() => setActiveTab('advisor')} className="brutal-btn bg-[#FF4D4D] text-white px-3 py-1.5 text-xs font-bold cursor-pointer">
+                      💬 성향으로 고민/질문 상담
+                    </button>
+                    <button onClick={() => { setResult(null); setActiveTab('test'); setCurrentIndex(0); setAnswers({}); }} className="brutal-btn bg-white px-3 py-1.5 text-xs font-bold cursor-pointer">
+                      🔄 다시하기
+                    </button>
+                  </div>
+                </div>
+
+                {/* Report Canvas */}
+                <div ref={reportRef} className="brutal-card-lg bg-[#FAF7EE] p-4 md:p-6 space-y-6">
+                  {/* Window Bar */}
+                  <div className="flex items-center justify-between bg-black text-white px-3 py-2 border-2 border-black">
+                    <div className="flex items-center gap-2">
+                      <div className="window-dots">
+                        <span className="window-dot bg-[#FF4D4D]"></span>
+                        <span className="window-dot bg-[#FFE600]"></span>
+                        <span className="window-dot bg-[#00D084]"></span>
+                      </div>
+                      <span className="text-xs font-black tracking-widest uppercase">
+                        ANALYTICS CONSOLE // TYPE: {result.code}
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-mono text-[#FFE600] font-bold">CONFIDENTIAL</span>
+                  </div>
+
+                  {/* 4 Stat Cards */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="brutal-card bg-white p-3.5">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-3.5 h-3.5 bg-black"></div>
+                        <span className="text-xs font-black uppercase text-gray-700">진단 유형</span>
+                      </div>
+                      <div className="text-2xl font-black text-black">{result.code}</div>
+                      <div className="text-[11px] font-bold text-gray-500 mt-1">{typeInfo?.badge}</div>
+                      <div className="h-1.5 w-full bg-[#FFE600] border-t border-black mt-2"></div>
+                    </div>
+
+                    <div className="brutal-card bg-white p-3.5">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-3.5 h-3.5 bg-[#FF4D4D]"></div>
+                        <span className="text-xs font-black uppercase text-gray-700">DCNH 하위성향</span>
+                      </div>
+                      <div className="text-xl font-black text-black">{typeInfo?.dcnhTitle?.split(' ')[0]}</div>
+                      <div className="text-[11px] font-bold text-gray-600 mt-1">{typeInfo?.dcnhTitle}</div>
+                      <div className="h-1.5 w-full bg-[#FF4D4D] border-t border-black mt-2"></div>
+                    </div>
+
+                    <div className="brutal-card bg-white p-3.5">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-3.5 h-3.5 bg-[#2563EB]"></div>
+                        <span className="text-xs font-black uppercase text-gray-700">최고 하위점수</span>
+                      </div>
+                      <div className="text-2xl font-black text-black">{result.dcnhScores[result.subType]}점</div>
+                      <div className="text-[11px] font-bold text-blue-600 mt-1">2위: {result.secondarySubType} ({result.dcnhScores[result.secondarySubType]}점)</div>
+                      <div className="h-1.5 w-full bg-[#2563EB] border-t border-black mt-2"></div>
+                    </div>
+
+                    <div className="brutal-card bg-white p-3.5">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-3.5 h-3.5 bg-[#00D084]"></div>
+                        <span className="text-xs font-black uppercase text-gray-700">완료 문항</span>
+                      </div>
+                      <div className="text-2xl font-black text-black">{result.answeredCount} / {result.totalQuestions}</div>
+                      <div className="text-[11px] font-bold text-emerald-700 mt-1">100% 정상 산출</div>
+                      <div className="h-1.5 w-full bg-[#00D084] border-t border-black mt-2"></div>
+                    </div>
+                  </div>
+
+                  {/* Dashboard Main Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    {/* Left Sidebar */}
+                    <div className="lg:col-span-4 brutal-card bg-[#2563EB] text-white p-4 flex flex-col justify-between">
+                      <div>
+                        <div className="border-b-2 border-black pb-2 mb-3">
+                          <span className="text-xs font-black uppercase bg-black text-[#FFE600] px-2 py-0.5 border border-white">
+                            PROFILE
+                          </span>
+                          <h3 className="text-2xl font-black mt-2">{typeInfo?.title}</h3>
+                          <p className="text-xs text-blue-100 font-semibold mt-1">{typeInfo?.slogan}</p>
+                        </div>
+
+                        <div className="space-y-2.5 my-3">
+                          <h4 className="text-xs font-black uppercase text-[#FFE600]">MBTI 4대 축 비율</h4>
+                          {/* E-I */}
+                          <div className="bg-white text-black p-2 border-2 border-black">
+                            <div className="flex justify-between text-xs font-black mb-1">
+                              <span>E {result.dimensions.EI.E}%</span>
+                              <span>I {result.dimensions.EI.I}%</span>
+                            </div>
+                            <div className="w-full h-2.5 bg-gray-200 border border-black flex">
+                              <div className="bg-[#FFE600] h-full" style={{ width: `${result.dimensions.EI.E}%` }}></div>
+                              <div className="bg-[#2563EB] h-full" style={{ width: `${result.dimensions.EI.I}%` }}></div>
+                            </div>
+                          </div>
+                          {/* S-N */}
+                          <div className="bg-white text-black p-2 border-2 border-black">
+                            <div className="flex justify-between text-xs font-black mb-1">
+                              <span>S {result.dimensions.SN.S}%</span>
+                              <span>N {result.dimensions.SN.N}%</span>
+                            </div>
+                            <div className="w-full h-2.5 bg-gray-200 border border-black flex">
+                              <div className="bg-[#00D084] h-full" style={{ width: `${result.dimensions.SN.S}%` }}></div>
+                              <div className="bg-[#FF4D4D] h-full" style={{ width: `${result.dimensions.SN.N}%` }}></div>
+                            </div>
+                          </div>
+                          {/* T-F */}
+                          <div className="bg-white text-black p-2 border-2 border-black">
+                            <div className="flex justify-between text-xs font-black mb-1">
+                              <span>T {result.dimensions.TF.T}%</span>
+                              <span>F {result.dimensions.TF.F}%</span>
+                            </div>
+                            <div className="w-full h-2.5 bg-gray-200 border border-black flex">
+                              <div className="bg-[#2563EB] h-full" style={{ width: `${result.dimensions.TF.T}%` }}></div>
+                              <div className="bg-[#FFE600] h-full" style={{ width: `${result.dimensions.TF.F}%` }}></div>
+                            </div>
+                          </div>
+                          {/* J-P */}
+                          <div className="bg-white text-black p-2 border-2 border-black">
+                            <div className="flex justify-between text-xs font-black mb-1">
+                              <span>J {result.dimensions.JP.J}%</span>
+                              <span>P {result.dimensions.JP.P}%</span>
+                            </div>
+                            <div className="w-full h-2.5 bg-gray-200 border border-black flex">
+                              <div className="bg-[#FF4D4D] h-full" style={{ width: `${result.dimensions.JP.J}%` }}></div>
+                              <div className="bg-[#00D084] h-full" style={{ width: `${result.dimensions.JP.P}%` }}></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="bg-black text-white p-2 text-xs font-mono border border-white">
+                        BASE: {result.mbti} [{typeInfo?.baseName}]
+                      </div>
+                    </div>
+
+                    {/* Right Panel */}
+                    <div className="lg:col-span-8 space-y-4">
+                      {/* DCNH Spectrum */}
+                      <div className="brutal-card bg-white p-4">
+                        <div className="flex justify-between items-center border-b-2 border-black pb-2 mb-3">
+                          <h4 className="font-black text-sm uppercase">DCNH 4대 하위 성향 스펙트럼</h4>
+                          <span className="text-xs font-mono font-bold text-gray-500">SCALE: 0~100</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="border-2 border-black p-2.5 bg-red-50">
+                            <div className="flex justify-between text-xs font-black mb-1">
+                              <span>🔴 주도형 (Dominant)</span>
+                              <span>{result.dcnhScores.D}점</span>
+                            </div>
+                            <div className="w-full bg-white h-3.5 border border-black">
+                              <div className="bg-[#FF4D4D] h-full" style={{ width: `${result.dcnhScores.D}%` }}></div>
+                            </div>
+                          </div>
+                          <div className="border-2 border-black p-2.5 bg-yellow-50">
+                            <div className="flex justify-between text-xs font-black mb-1">
+                              <span>🟡 창의형 (Creative)</span>
+                              <span>{result.dcnhScores.C}점</span>
+                            </div>
+                            <div className="w-full bg-white h-3.5 border border-black">
+                              <div className="bg-[#FFE600] h-full" style={{ width: `${result.dcnhScores.C}%` }}></div>
+                            </div>
+                          </div>
+                          <div className="border-2 border-black p-2.5 bg-blue-50">
+                            <div className="flex justify-between text-xs font-black mb-1">
+                              <span>🔵 체계형 (Normalizing)</span>
+                              <span>{result.dcnhScores.N}점</span>
+                            </div>
+                            <div className="w-full bg-white h-3.5 border border-black">
+                              <div className="bg-[#2563EB] h-full" style={{ width: `${result.dcnhScores.N}%` }}></div>
+                            </div>
+                          </div>
+                          <div className="border-2 border-black p-2.5 bg-emerald-50">
+                            <div className="flex justify-between text-xs font-black mb-1">
+                              <span>🟢 조화형 (Harmonizing)</span>
+                              <span>{result.dcnhScores.H}점</span>
+                            </div>
+                            <div className="w-full bg-white h-3.5 border border-black">
+                              <div className="bg-[#00D084] h-full" style={{ width: `${result.dcnhScores.H}%` }}></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Detailed Analysis */}
+                      <div className="brutal-card bg-white p-4 space-y-3">
+                        <h4 className="font-black text-sm border-b-2 border-black pb-2">행동 양식 심층 분석</h4>
+                        <p className="text-xs md:text-sm text-gray-800 leading-relaxed bg-gray-50 p-3 border border-black">
+                          {typeInfo?.summary}
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                          <div className="bg-emerald-50 border-2 border-black p-2.5">
+                            <span className="font-black text-xs text-emerald-900 block mb-1">핵심 강점</span>
+                            <ul className="text-xs space-y-1 text-gray-700">
+                              {typeInfo?.strengths?.map((s, i) => <li key={i}>✓ {s}</li>)}
+                            </ul>
+                          </div>
+                          <div className="bg-red-50 border-2 border-black p-2.5">
+                            <span className="font-black text-xs text-red-900 block mb-1">주의할 점</span>
+                            <ul className="text-xs space-y-1 text-gray-700">
+                              {typeInfo?.risks?.map((r, i) => <li key={i}>! {r}</li>)}
+                            </ul>
+                          </div>
+                        </div>
+
+                        <div className="bg-[#FFFDF0] border-2 border-black p-2.5 text-xs">
+                          <span className="font-black text-black block mb-0.5">🤝 최적의 협업 시너지:</span>
+                          <span className="text-gray-700">{typeInfo?.synergy}</span>
+                        </div>
+                      </div>
+
+                      {/* Warnings */}
+                      {result.warnings?.length > 0 && (
+                        <div className="brutal-card bg-yellow-100 p-3 text-xs border-2 border-black">
+                          <span className="font-black text-black block mb-1">⚠️ 경계선 성향 감지:</span>
+                          <ul className="list-disc list-inside space-y-0.5 text-gray-800">
+                            {result.warnings.map((w, idx) => <li key={idx}>{w}</li>)}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bottom 3 Action Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                    <div onClick={() => setActiveTab('advisor')} className="brutal-card bg-[#FF4D4D] text-white p-3 flex justify-between items-center cursor-pointer hover:translate-y-[-2px] transition-transform">
+                      <div>
+                        <span className="font-black text-sm block">질문/상황 상담하기</span>
+                        <span className="text-[11px] text-red-100">내 유형 기반 맞춤 솔루션</span>
+                      </div>
+                      <span className="text-lg">➔</span>
+                    </div>
+
+                    <div onClick={handleDownloadReport} className="brutal-card bg-white text-black p-3 flex justify-between items-center cursor-pointer hover:translate-y-[-2px] transition-transform">
+                      <div>
+                        <span className="font-black text-sm block">리포트 이미지 저장</span>
+                        <span className="text-[11px] text-gray-500">SNS 공유용 고화질 PNG</span>
+                      </div>
+                      <span className="text-lg">📥</span>
+                    </div>
+
+                    <div onClick={() => setActiveTab('catalog')} className="brutal-card bg-[#FFE600] text-black p-3 flex justify-between items-center cursor-pointer hover:translate-y-[-2px] transition-transform">
+                      <div>
+                        <span className="font-black text-sm block">64유형 사전 탐색</span>
+                        <span className="text-[11px] text-gray-700">전체 세분화 유형 비교</span>
+                      </div>
+                      <span className="text-lg">📖</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: ADVISOR */}
+            {activeTab === 'advisor' && (
+              <div className="max-w-4xl mx-auto space-y-6 pb-8">
+                <div className="brutal-card bg-[#00D084] p-4 text-black">
+                  <div className="flex justify-between items-center border-b-2 border-black pb-2 mb-2">
+                    <h2 className="text-lg font-black">성향 기반 질문 & 상황 심층 분석기</h2>
+                    <span className="text-xs font-mono font-bold bg-white px-2 py-0.5 border border-black">
+                      TYPE-ADVISOR
+                    </span>
+                  </div>
+                  <p className="text-xs md:text-sm font-semibold">
+                    본인의 64가지 세분화 유형({result?.code || 'INTJ-C'}) 성향을 바탕으로 고민, 갈등, 의사결정 상황에 대한 맞춤 행동 전략을 도출합니다.
+                  </p>
+                </div>
+
+                <div className="brutal-card-lg bg-white p-5 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-sm font-black uppercase text-gray-800">
+                      분석받고 싶은 질문이나 직면한 상황을 입력하세요:
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleResetAdvisor}
+                      className="brutal-btn bg-[#FFE600] hover:bg-yellow-300 text-black text-xs px-3 py-1 flex items-center gap-1 cursor-pointer font-black shadow-[2px_2px_0px_#000]"
+                      title="입력한 질문 내용 지우기"
+                    >
+                      <span className="font-bold">🔄 입력 비우기</span>
+                    </button>
+                  </div>
+                  <textarea
+                    value={advisorQuestion}
+                    onChange={(e) => setAdvisorQuestion(e.target.value)}
+                    placeholder="예: 새로운 팀 프로젝트에서 동료와 갈등이 생겼는데, 제 성향상 어떻게 소통해야 원만하게 성과를 낼 수 있을까요?"
+                    rows={4}
+                    className="w-full p-3 border-2 border-black bg-gray-50 focus:bg-white text-sm font-medium outline-none shadow-[3px_3px_0px_#000]"
+                  />
+
+                  {/* Sample Chips */}
+                  <div className="space-y-1">
+                    <span className="text-xs font-black text-gray-600">자주 묻는 질문 템플릿:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        "새 프로젝트에서 팀원들과 소통 방식을 어떻게 잡아야 할까요?",
+                        "상대방과 의견 충돌이 났을 때 제 성향상 최선의 조율법은?",
+                        "최근 번아웃이 왔습니다. 제 유형에 맞는 회복 루틴은?",
+                        "진로 결정을 앞두고 어떤 기준을 우선 삼아야 할까요?"
+                      ].map((sq, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setAdvisorQuestion(sq)}
+                          className="text-xs bg-gray-100 hover:bg-yellow-100 border border-black px-2 py-1 text-left font-medium cursor-pointer"
+                        >
+                          "{sq}"
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Gemini API Key */}
+                  <div className="border-t-2 border-black pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="text-xs font-bold text-gray-600 flex items-center gap-1 hover:text-black cursor-pointer"
+                    >
+                      <span>🔑 Google Gemini 실시간 AI 엔진 연동 설정 (선택 사항)</span>
+                      <span>{showApiKey ? '▲' : '▼'}</span>
+                    </button>
+                    {showApiKey && (
+                      <div className="mt-2 p-3 bg-gray-50 border border-black text-xs space-y-2">
+                        <p className="text-gray-600">
+                          API Key가 없어도 내장된 <strong>지능형 64유형 규칙 엔진</strong>이 즉시 정밀 솔루션을 생성합니다. 직접 키를 입력하시면 Google Gemini AI가 실시간 분석합니다.
+                        </p>
+                        <input
+                          type="password"
+                          value={advisorApiKey}
+                          onChange={(e) => setAdvisorApiKey(e.target.value)}
+                          placeholder="Google Gemini API Key 입력..."
+                          className="w-full p-2 border border-black bg-white text-xs font-mono"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 분석 및 상시 표시 초기화 버튼 그룹 */}
+                  <div className="flex flex-wrap items-center gap-3 pt-1">
+                    <button
+                      onClick={handleRunAdvisor}
+                      disabled={advisorLoading}
+                      className="flex-1 min-w-[200px] brutal-btn bg-[#FF4D4D] text-white py-3 text-sm md:text-base font-black flex items-center justify-center gap-2 cursor-pointer shadow-[4px_4px_0px_#000]"
+                    >
+                      {advisorLoading ? "심층 솔루션 분석 중..." : "성향 맞춤 솔루션 분석받기 ➔"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetAdvisor}
+                      title="질문 내용 및 분석 결과 모두 초기화"
+                      className="brutal-btn bg-white hover:bg-gray-100 text-black px-5 py-3 text-sm font-black flex items-center gap-1.5 cursor-pointer shadow-[3px_3px_0px_#000]"
+                    >
+                      <span className="text-red-600 text-base font-bold">🔄</span>
+                      <span>전체 초기화</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Advisor Result */}
+                {advisorResult && (
+                  <div className="brutal-card-lg bg-white p-6 space-y-4 border-4 border-black">
+                    <div className="flex flex-wrap justify-between items-center border-b-2 border-black pb-3 gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="brutal-tag bg-[#FFE600] text-xs px-2.5 py-1">솔루션 리포트</span>
+                        <h3 className="font-black text-base">[{result?.code || 'INTJ-C'}] 맞춤형 성향 처방전</h3>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleResetAdvisor}
+                          className="brutal-btn bg-white hover:bg-red-50 px-2.5 py-1 text-xs cursor-pointer text-red-600"
+                          title="기존 결과를 지우고 새로운 질문 작성하기"
+                        >
+                          🔄 새 질문 (초기화)
+                        </button>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(advisorResult.content);
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          }}
+                          className="brutal-btn bg-white px-2.5 py-1 text-xs cursor-pointer"
+                        >
+                          {copied ? '복사됨 ✓' : '결과 복사'}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-xs md:text-sm text-gray-800 leading-relaxed whitespace-pre-line bg-[#FFFDF0] p-4 border-2 border-black font-sans">
+                      {advisorResult.content}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB: CATALOG */}
+            {activeTab === 'catalog' && (
+              <div className="max-w-5xl mx-auto space-y-6 pb-8">
+                <div className="brutal-card bg-black text-white p-4">
+                  <div className="flex justify-between items-center border-b-2 border-white pb-2 mb-2">
+                    <h2 className="text-lg font-black text-[#FFE600]">64가지 세분화 성격 유형 백과 (CATALOG)</h2>
+                    <span className="text-xs font-mono font-bold bg-[#FFE600] text-black px-2 py-0.5">총 64개</span>
+                  </div>
+                  <p className="text-xs text-gray-300">
+                    기본 16가지 MBTI에 DCNH 4대 하위유형(주도형 D, 창의형 C, 체계형 N, 조화형 H)이 결합된 모든 세분화 유형을 탐색하세요.
+                  </p>
+                </div>
+
+                {/* Filters */}
+                <div className="brutal-card bg-white p-4 space-y-3">
+                  <input
+                    type="text"
+                    value={catalogSearch}
+                    onChange={(e) => setCatalogSearch(e.target.value)}
+                    placeholder="유형 코드(예: INTJ-C), 직함, 키워드로 검색..."
+                    className="w-full p-2 border-2 border-black text-xs font-bold outline-none"
+                  />
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs font-black mr-2">DCNH:</span>
+                    {[
+                      { id: 'ALL', label: '전체' },
+                      { id: 'D', label: '주도형 (D)', bg: 'bg-[#FF4D4D] text-white' },
+                      { id: 'C', label: '창의형 (C)', bg: 'bg-[#FFE600] text-black' },
+                      { id: 'N', label: '체계형 (N)', bg: 'bg-[#2563EB] text-white' },
+                      { id: 'H', label: '조화형 (H)', bg: 'bg-[#00D084] text-black' }
+                    ].map(d => (
+                      <button
+                        key={d.id}
+                        onClick={() => setCatalogDcnh(d.id)}
+                        className={`px-2 py-0.5 text-xs font-black border border-black cursor-pointer ${catalogDcnh === d.id ? `${d.bg || 'bg-black text-white'} shadow-[2px_2px_0px_#000]` : 'bg-white text-gray-700'}`}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.values(typeCatalog)
+                    .filter(t => {
+                      const matchSearch = t.code.toLowerCase().includes(catalogSearch.toLowerCase()) || t.title.toLowerCase().includes(catalogSearch.toLowerCase());
+                      const matchDcnh = catalogDcnh === 'ALL' || t.dcnh === catalogDcnh;
+                      return matchSearch && matchDcnh;
+                    })
+                    .map(item => (
+                      <div
+                        key={item.code}
+                        onClick={() => setCatalogModal(item)}
+                        className="brutal-card bg-white p-4 flex flex-col justify-between cursor-pointer hover:translate-y-[-2px] transition-transform min-h-[320px] h-full"
+                      >
+                        <div>
+                          <div className="flex justify-between items-center border-b-2 border-black pb-2 mb-2">
+                            <span className="text-xl font-black">{item.code}</span>
+                            <span className="text-xs font-black px-2 py-0.5 border border-black bg-yellow-200">
+                              {item.dcnhTitle.split(' ')[0]}
+                            </span>
+                          </div>
+                          <h4 className="font-extrabold text-sm text-black leading-snug break-keep">{item.title}</h4>
+                          <p className="text-xs text-gray-500 font-bold mt-1 italic">{item.slogan}</p>
+                          <div className="text-xs text-gray-800 mt-3 bg-gray-50 p-2.5 border-2 border-black leading-relaxed break-keep">
+                            {item.summary}
+                          </div>
+                        </div>
+                        <div className="pt-3 border-t-2 border-black mt-3 text-xs font-bold flex justify-between items-center">
+                          <span className="bg-black text-white px-1.5 py-0.5 text-[11px]">{item.baseName.split(' ')[0]}</span>
+                          <span className="font-black underline text-black">자세히 보기 ➔</span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+
+                {/* Modal */}
+                {catalogModal && (
+                  <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+                    <div className="brutal-card-lg bg-white max-w-lg w-full p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+                      <div className="flex justify-between items-center border-b-2 border-black pb-2">
+                        <span className="text-2xl font-black">{catalogModal.code}</span>
+                        <button onClick={() => setCatalogModal(null)} className="brutal-btn px-2 py-0.5 font-black bg-white cursor-pointer">X</button>
+                      </div>
+                      <h3 className="text-lg font-black">{catalogModal.title}</h3>
+                      <p className="text-xs font-bold text-gray-500 italic">{catalogModal.slogan}</p>
+                      <div className="bg-[#FFFDF0] p-3 border-2 border-black text-xs leading-relaxed">
+                        {catalogModal.summary}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-emerald-50 border border-black p-2">
+                          <span className="font-black text-emerald-900 block mb-1">핵심 강점</span>
+                          <ul className="space-y-0.5 text-gray-700">
+                            {catalogModal.strengths?.map((s, i) => <li key={i}>✓ {s}</li>)}
+                          </ul>
+                        </div>
+                        <div className="bg-red-50 border border-black p-2">
+                          <span className="font-black text-red-900 block mb-1">주의할 점</span>
+                          <ul className="space-y-0.5 text-gray-700">
+                            {catalogModal.risks?.map((r, i) => <li key={i}>! {r}</li>)}
+                          </ul>
+                        </div>
+                      </div>
+                      <div className="bg-blue-50 border border-black p-2 text-xs">
+                        <span className="font-black text-blue-900 block mb-0.5">협업 시너지</span>
+                        <p className="text-gray-700">{catalogModal.synergy}</p>
+                      </div>
+                      <button onClick={() => setCatalogModal(null)} className="w-full brutal-btn bg-black text-white py-1.5 text-xs font-bold cursor-pointer">
+                        닫기
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* FOOTER */}
+            <footer className="mt-8 brutal-card bg-white p-4 text-center text-xs space-y-1">
+              <div className="font-mono font-bold">64-MBTI DIAGNOSTIC ENGINE • NEO-BRUTALISM UI</div>
+              <p className="text-gray-500 text-[11px]">* MBTI 16가지 성향과 소시오닉스 DCNH 4대 하위유형을 결합한 인터랙티브 자기이해 웹 애플리케이션입니다.</p>
+            </footer>
+
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

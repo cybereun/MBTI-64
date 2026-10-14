@@ -1,0 +1,68 @@
+/* Neo-Brutalism Utilities & Base */
+
+@font-face {
+  font-family: 'Poor Story';
+  src: url('/fonts/PoorStory-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+body {
+  background-color: #F8F5EE;
+  color: #111111;
+  font-family: 'Poor Story', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, cursive, sans-serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+.brutal-card {
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0px #000000;
+  background-color: #ffffff;
+}
+
+.brutal-card-lg {
+  border: 4px solid #000000;
+  box-shadow: 7px 7px 0px #000000;
+  background-color: #ffffff;
+}
+
+.brutal-btn {
+  border: 2px solid #000000;
+  box-shadow: 3px 3px 0px #000000;
+  font-weight: 700;
+  transition: all 0.1s ease-in-out;
+}
+
+.brutal-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #000000;
+}
+
+.brutal-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px #000000;
+}
+
+.brutal-tag {
+  border: 2px solid #000000;
+  box-shadow: 2px 2px 0px #000000;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.window-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.window-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  border: 2px solid #000000;
+}
