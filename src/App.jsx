@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
+import WelcomePage from './components/WelcomePage';
 import AssessmentView from './components/AssessmentView';
 import ResultDashboard from './components/ResultDashboard';
 import QuestionAdvisorModal from './components/QuestionAdvisorModal';
@@ -8,6 +9,7 @@ import { calculateScores } from './utils/scoringEngine';
 import typeCatalog from './data/typeCatalog.json';
 
 export default function App() {
+  const [isAppOpened, setIsAppOpened] = useState(false);
   const [activeTab, setActiveTab] = useState('test');
   const [result, setResult] = useState(() => {
     try {
@@ -58,6 +60,10 @@ export default function App() {
     }
   };
 
+  if (!isAppOpened) {
+    return <WelcomePage onOpenApp={() => setIsAppOpened(true)} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#F8F5EE] text-black px-3 py-4 md:px-6 md:py-6 selection:bg-[#FFE600] selection:text-black">
       <div className="max-w-6xl mx-auto">
@@ -67,6 +73,7 @@ export default function App() {
           setActiveTab={setActiveTab}
           onReset={handleReset}
           hasResult={!!result}
+          onBackToWelcome={() => setIsAppOpened(false)}
         />
 
         {/* 탭 본문 영역 */}

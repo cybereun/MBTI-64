@@ -1,7 +1,7 @@
 import React from 'react';
-import { Sparkles, Compass, BookOpen, MessageSquareText, RefreshCw } from 'lucide-react';
+import { Sparkles, Compass, BookOpen, MessageSquareText, RefreshCw, Home } from 'lucide-react';
 
-export default function Header({ activeTab, setActiveTab, onReset, hasResult }) {
+export default function Header({ activeTab, setActiveTab, onReset, hasResult, onBackToWelcome }) {
   return (
     <header className="brutal-card bg-[#FFE600] p-3 mb-6">
       {/* OS Window Bar */}
@@ -38,6 +38,17 @@ export default function Header({ activeTab, setActiveTab, onReset, hasResult }) 
         </div>
 
         <nav className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+          {onBackToWelcome && (
+            <button
+              onClick={onBackToWelcome}
+              title="웰컴 첫 화면으로 가기"
+              className="brutal-btn px-2.5 py-1.5 text-xs md:text-sm flex items-center gap-1 cursor-pointer bg-white hover:bg-yellow-100"
+            >
+              <Home className="w-4 h-4 text-black" />
+              <span>웰컴</span>
+            </button>
+          )}
+
           <button
             onClick={() => setActiveTab('test')}
             className={`brutal-btn px-3 py-1.5 text-xs md:text-sm flex items-center gap-1.5 cursor-pointer ${
